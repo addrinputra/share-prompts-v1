@@ -1,14 +1,8 @@
-import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
+import NextAuth from 'next-auth';
+import GoogleProvider from 'next-auth/providers/google';
 
-import User from "@models/user";
-import { connectToDB } from "@utils/database";
-
-console.log({
-  clientId: process.env.GOOGLE_ID,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-});
-
+import User from '@models/user';
+import { connectToDB } from '@utils/database';
 
 const handler = NextAuth({
   providers: [
@@ -17,59 +11,37 @@ const handler = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     })
   ],
-  async session({session}) {
-    // const sessionUser = await User.findOne({
-    //   email: session.user.email
-    // })
-
-    // session.user.id = sessionUser._id.toString();
-
-    // return session;
-    try {
-      await connectToDB();  // Ensure the database is connected
-      const sessionUser = await User.findOne({
-        email: session.user.email 
-      }); 
-
-      if (!sessionUser) {
-        throw new Error("User not found");
-      }
-
+  callbacks: {
+    async session({ session }) {
+      // store the user id from MongoDB to session
+      const sessionUser = await User.findOne({ email: session.user.email });
       session.user.id = sessionUser._id.toString();
-      return session;
-    } catch (error) {
-      console.error('Error in session callback:', error);
-      return session;
-    }
-  },
-  async signIn({profile}) {
-    try {
-      // serverless -> Lambda -> dynamodb (opens ip only when it gets called)
-      await connectToDB();
 
-      // check if a user already exist
-      const userExist = await User.findOne({
-        email: profile.email
-      });
+      return session;
+    },
+    async signIn({ account, profile, user, credentials }) {
+      try {
+        await connectToDB();
 
-      // if not, create a new user
-      if (!userExist) {
-        await User.create({
-          email: profile.email,
-          username: profile.name.replace(" ", "").toLowerCase(),
-          image: profile.picture
-        })
+        // check if user already exists
+        const userExists = await User.findOne({ email: profile.email });
+
+        // if not, create a new document and save user in MongoDB
+        if (!userExists) {
+          await User.create({
+            email: profile.email,
+            username: profile.name.replace(" ", "").toLowerCase(),
+            image: profile.picture,
+          });
+        }
+
+        return true
+      } catch (error) {
+        console.log("Error checking if user exists: ", error.message);
+        return false
       }
+    },
+  }
+})
 
-      return true;
-    } catch (error) {
-      console.error("Error in signIn callback:", error);
-      return false;
-    }
-  },
-  pages: {
-    error: '/auth/error', // Redirect users to an error page if something goes wrong
-  },
-});
-
-export { handler as GET, handler as POST };
+export { handler as GET, handler as POST }

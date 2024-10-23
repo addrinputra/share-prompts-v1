@@ -13,18 +13,9 @@ const Nav = () => {
 
   useEffect(() => {
     const setUpProviders = async () => {
-      const response = await getProviders();
-
-      setProviders(response);
-    }
-
-    setUpProviders();
-  }, [])
-
-  useEffect(() => {
-    const setUpProviders = async () => {
       try {
         const response = await getProviders();
+        
         setProviders(response);
       } catch (error) {
         console.error("Error fetching providers:", error);
@@ -62,7 +53,7 @@ const Nav = () => {
 
             <Link href='/profile'>
               <Image 
-                src='/assets/images/logo.svg'
+                src={session?.user.image || '/assets/images/logo.svg'}
                 width={37}
                 height={37}
                 className="rounded-full"
@@ -92,7 +83,7 @@ const Nav = () => {
         {session?.user ? (
           <div className="flex">
             <Image 
-                src='/assets/images/logo.svg'
+                src={session?.user.image || '/assets/images/logo.svg'}
                 width={37}
                 height={37}
                 className="rounded-full"
